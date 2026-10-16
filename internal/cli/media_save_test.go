@@ -2,6 +2,8 @@ package cli_test
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 	"path/filepath"
 	"strings"
@@ -95,5 +97,47 @@ func TestMediaSaveCmd(t *testing.T) {
 		if _, err := run(t, "", c.args...); err == nil || !strings.Contains(err.Error(), c.want) {
 			t.Errorf("%s: got %v, want an error about %q", c.name, err, c.want)
 		}
+	}
+}
+
+// The project's chat runs agentbox in its shell with its own socket, as its
+// MCP server does (LeadChatCommand): media save and list work there, and the
+// daemon's socket isn't needed, nor a daemon started.
+func TestMediaSaveFromTheLeadsShell(t *testing.T) {
+	isolate(t)
+	startDaemon(t)
+	if _, err := run(t, "", "add", testutil.FixtureRepo(t, "hello-stack")); err != nil {
+		t.Fatal(err)
+	}
+	addAgentRow(t, "hello-stack", "agent-01")
+	addMediaRow(t, state.Media{ID: "shot", Project: "hello-stack", Agent: "agent-01", Kind: "screenshot", Name: "empty-state",
+		File: "shot/empty-state.png", Mime: "image/png", CreatedAt: time.Now()}, "the take")
+	p, err := paths.Default()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The daemon's leadSocketPath for hello-stack.
+	sum := sha256.Sum256([]byte("lead:hello-stack"))
+	t.Setenv("AGENTBOX_SOCKET", filepath.Join(p.Data, "run", "leads", hex.EncodeToString(sum[:6])+".sock"))
+	t.Setenv("AGENTBOX_NO_AUTOSTART", "1")
+
+	out, err := run(t, "", "media", "list", "hello-stack/agent-01")
+	if err != nil {
+		t.Fatalf("media list from the lead's shell: %v\n%s", err, out)
+	}
+	mustContain(t, out, "empty-state")
+	if out, err := run(t, "", "media", "list", "hello-stack"); err != nil {
+		t.Fatalf("media list <project> from the lead's shell: %v\n%s", err, out)
+	}
+	dest := filepath.Join(t.TempDir(), "shot.png")
+	if out, err := run(t, "", "media", "save", "hello-stack/agent-01", "--name", "empty-state", dest); err != nil {
+		t.Fatalf("media save from the lead's shell: %v\n%s", err, out)
+	}
+	if b, err := os.ReadFile(dest); err != nil || string(b) != "the take" {
+		t.Errorf("saved %q, %v; want the take", b, err)
+	}
+	// Read only: deleting is still the user's.
+	if _, err := run(t, "", "media", "rm", "hello-stack/agent-01", "shot"); err == nil {
+		t.Error("media rm worked from the lead's shell")
 	}
 }

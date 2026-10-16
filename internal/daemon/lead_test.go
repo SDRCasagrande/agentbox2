@@ -3,6 +3,7 @@ package daemon
 import (
 	"context"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -135,6 +136,84 @@ func TestLeadIsNotReachableAsAnAgent(t *testing.T) {
 	}
 	if _, err := os.Stat(d.paths.Worktree("hello-stack", state.LeadName)); !os.IsNotExist(err) {
 		t.Errorf("the lead's worktree outlived its project (stat: %v)", err)
+	}
+}
+
+// The lead's shell runs `agentbox media list` and `media save` on its own
+// socket: it reads its project's agents' media and files, on the paths the CLI
+// asks, and nothing of another project's, nor changes any.
+func TestLeadReadsItsOwnProjectsMedia(t *testing.T) {
+	t.Parallel()
+	d := startTestDaemon(t, t.TempDir(), fakeIncus)
+	ctx := context.Background()
+	m := d.srv.manager(nil)
+	for _, project := range []string{"web", "api"} {
+		if _, err := d.client.AddProject(ctx, api.AddProjectRequest{Path: d.fixtureRepo(t, "hello-stack"), Name: project}); err != nil {
+			t.Fatal(err)
+		}
+		a := state.Agent{
+			Project: project, Name: "agent-01", Instance: "ab-" + project + "-agent-01", AI: "none",
+			Branch: "agentbox/agent-01", Worktree: "/worktrees/agent-01", Status: state.AgentReady, CreatedAt: time.Now(),
+		}
+		if err := d.srv.store.AddAgent(ctx, a); err != nil {
+			t.Fatal(err)
+		}
+		dir := m.MediaDir(project, a.Name)
+		if err := os.MkdirAll(dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "shot.png"), []byte(project+" png"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		item := state.Media{ID: project + "-shot", Project: project, Agent: a.Name, Kind: "screenshot", Name: "empty-state",
+			File: "shot.png", Mime: "image/png", Meta: "{}", Source: "agent", CreatedAt: time.Now()}
+		if err := d.srv.store.AddMedia(ctx, item); err != nil {
+			t.Fatal(err)
+		}
+	}
+	lead := api.NewClient(d.srv.leadSocketPath("web"))
+
+	// What the CLI checks before anything else.
+	if _, err := lead.Version(ctx); err != nil {
+		t.Fatalf("Version() on the lead's socket = %v", err)
+	}
+	items, err := lead.Media(ctx, "web/agent-01")
+	if err != nil || len(items) != 1 || items[0].ID != "web-shot" {
+		t.Fatalf("Media(web/agent-01) = %+v, %v; want its one screenshot", items, err)
+	}
+	if items, err := lead.ProjectMedia(ctx, "web", "", ""); err != nil || len(items) != 1 {
+		t.Errorf("ProjectMedia(web) = %+v, %v; want its one screenshot", items, err)
+	}
+	body, err := lead.MediaFile(ctx, "web/agent-01", "web-shot")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, _ := io.ReadAll(body)
+	_ = body.Close()
+	if string(got) != "web png" {
+		t.Errorf("MediaFile(web-shot) = %q, want the file", got)
+	}
+
+	// Another project's media, by any path, is not the lead's to read.
+	if _, err := lead.Media(ctx, "api/agent-01"); err == nil || !strings.Contains(err.Error(), "its own project") {
+		t.Errorf("Media(api/agent-01) = %v, want it refused", err)
+	}
+	if _, err := lead.ProjectMedia(ctx, "api", "", ""); err == nil || !strings.Contains(err.Error(), "its own project") {
+		t.Errorf("ProjectMedia(api) = %v, want it refused", err)
+	}
+	if body, err := lead.MediaFile(ctx, "api/agent-01", "api-shot"); err == nil {
+		_ = body.Close()
+		t.Error("MediaFile(api-shot) served another project's file")
+	}
+	// Nor is any of it the lead's to change.
+	if err := lead.DeleteMedia(ctx, "web-shot"); err == nil {
+		t.Error("DeleteMedia() on the lead's socket deleted an item")
+	}
+	if _, err := lead.AddNote(ctx, "web/agent-01", api.NoteRequest{Text: "hi"}); err == nil {
+		t.Error("AddNote() on the lead's socket added a note")
+	}
+	if _, err := lead.MediaItem(ctx, "api-shot"); err == nil {
+		t.Error("MediaItem() on the lead's socket described another project's item")
 	}
 }
 

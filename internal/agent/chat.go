@@ -97,6 +97,12 @@ func (m *Manager) LeadChatCommand(ctx context.Context, a state.Agent, status fun
 		}
 	}
 	env = append(env, toolEnvVars...)
+	// The lead's socket, as its `agentbox mcp` has it (writeLeadHome), for
+	// `agentbox` in its shell: without it, the CLI looks for the daemon's
+	// socket under the private HOME, finds none, and starts a second daemon.
+	if socket := m.LeadSocket(a.Project); socket != "" {
+		env = append(env, "AGENTBOX_SOCKET="+socket, "AGENTBOX_NO_AUTOSTART=1")
+	}
 	// The project's GitHub account, as its agents have it (agentEnv), for gh
 	// and for git through the helper configureLead wrote.
 	p := homeProject

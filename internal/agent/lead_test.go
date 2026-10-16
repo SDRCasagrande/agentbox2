@@ -609,6 +609,32 @@ func TestLeadKnowsItRunsInTheVM(t *testing.T) {
 	}
 }
 
+// `agentbox` in the lead's shell found no daemon under the lead's private HOME
+// and started a second one, whose socket path there was too long to listen
+// on, so the brief's `agentbox media save` never worked. The shell now has
+// the lead's socket, as its `agentbox mcp` does, and never starts a daemon.
+func TestLeadShellReachesItsOwnSocket(t *testing.T) {
+	f := leadFixture(t)
+	f.m.LeadSocketPath = func(project string) string { return filepath.Join("/run/leads", project+".sock") }
+	a, err := f.m.EnsureLead(context.Background(), "hello-stack")
+	if err != nil {
+		t.Fatal(err)
+	}
+	env := leadEnv(t, f, a)
+	if got, want := env["AGENTBOX_SOCKET"], "/run/leads/hello-stack.sock"; got != want {
+		t.Errorf("AGENTBOX_SOCKET = %q, want the lead's socket %q, not the daemon's", got, want)
+	}
+	if env["AGENTBOX_NO_AUTOSTART"] != "1" {
+		t.Errorf("AGENTBOX_NO_AUTOSTART = %q, want 1: the lead's shell must not start a daemon", env["AGENTBOX_NO_AUTOSTART"])
+	}
+
+	// With no lead socket (a preview) there is nothing to point it at.
+	f.m.LeadSocketPath = nil
+	if v, ok := leadEnv(t, f, a)["AGENTBOX_SOCKET"]; ok {
+		t.Errorf("AGENTBOX_SOCKET = %q with no lead socket", v)
+	}
+}
+
 // In the VM the lead's remote, git@github.com, needs an ssh key the VM's home
 // doesn't have ("Host key verification failed"), and the lead had no token
 // either. It now gets the GitHub account its project's agents default to: the

@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -156,10 +157,55 @@ func (s *Server) leadRoutes(project string) http.Handler {
 	mux.HandleFunc("GET /v1/project/questions", withProject(s.leadQuestions))
 	mux.HandleFunc("POST /v1/project/questions/{id}/answer", withProject(s.leadAnswerQuestion))
 	mux.HandleFunc("POST /v1/project/questions/{id}/escalate", withProject(s.leadEscalateQuestion))
+	// The chat's own shell runs `agentbox` with this socket (LeadChatCommand),
+	// for `agentbox media list` and `media save`: the project's agents' media,
+	// read only, on the user API's paths, which are what the CLI asks. The
+	// version is what the CLI checks first, without the host's groups, as an
+	// agent's socket answers it.
+	mux.HandleFunc("GET /v1/version", func(w http.ResponseWriter, _ *http.Request) {
+		_ = writeJSON(w, http.StatusOK, api.VersionInfo{Version: Version})
+	})
+	// These paths name a project, which must be the socket's own.
+	ownProject := func(fn func(http.ResponseWriter, *http.Request) error) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			if !s.namesProject(r, project) {
+				_ = writeJSON(w, http.StatusForbidden, api.Error{Error: "a project's chat can only reach its own project"})
+				return
+			}
+			withProject(fn)(w, r)
+		}
+	}
+	mux.HandleFunc("GET /v1/projects/{project}/media", ownProject(s.projectMedia))
+	mux.HandleFunc("GET /v1/agents/{project}/{agent}/media", ownProject(s.media("list", s.agentFromPath, "user")))
+	mux.HandleFunc("GET /v1/media/{id}/file", withProject(s.leadMediaFile))
 	mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) {
 		_ = writeJSON(w, http.StatusForbidden, api.Error{Error: "a project's chat can only reach its own project"})
 	})
 	return mux
+}
+
+// namesProject is whether the request's path names project, by its name or
+// by any other ref the user API accepts for it (projectBySlug).
+func (s *Server) namesProject(r *http.Request, project string) bool {
+	ref := r.PathValue("project")
+	if ref == project {
+		return true
+	}
+	p, err := s.store.Project(r.Context(), ref)
+	return err == nil && p.Name == project
+}
+
+// leadMediaFile is mediaFile on a lead's socket, for its own project's items
+// only: what `agentbox media save` copies out.
+func (s *Server) leadMediaFile(w http.ResponseWriter, r *http.Request) error {
+	item, err := s.store.MediaItem(r.Context(), r.PathValue("id"))
+	if err != nil {
+		return err
+	}
+	if item.Project != r.PathValue("project") {
+		return fmt.Errorf("media %s: %w", item.ID, state.ErrNotFound)
+	}
+	return s.serveMediaFile(w, r, item)
 }
 
 // leadAgent finds one agent of the lead's project, refusing the lead itself.
