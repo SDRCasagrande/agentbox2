@@ -796,8 +796,8 @@ function ScopeBadge({ connector: c }: { connector: T.Connector }) {
   const t = useT();
   if (isWide(c)) {
     return (
-      <Badge variant="brand" className="shrink-0">
-        <Globe />
+      <Badge className="shrink-0">
+        <Globe className="text-brand-500" />
         {t('project.connectors.wideBadge')}
       </Badge>
     );
