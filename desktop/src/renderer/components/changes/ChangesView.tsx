@@ -161,7 +161,9 @@ export function ChangesView({ fileRef, path, nonce }: { fileRef: string; path?: 
   const name = !who || who === T.LeadName ? project : who;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col" onKeyDown={onKeyDown} data-changes-layout={diffLayout}>
+    // Focusable, so a click on the diff, which has nothing to focus, keeps the
+    // keys here rather than on the dialog around it.
+    <div className="flex min-h-0 flex-1 flex-col outline-none" tabIndex={-1} onKeyDown={onKeyDown} data-changes-layout={diffLayout}>
       <header className="flex min-w-0 shrink-0 items-center gap-3 border-b border-line-faint py-2.5 pl-4 pr-14">
         <GitCompare className="size-4 shrink-0 text-brand-300" />
         <DialogTitle className="flex min-w-0 items-baseline gap-2 text-[15px] font-semibold tracking-tight text-title">
