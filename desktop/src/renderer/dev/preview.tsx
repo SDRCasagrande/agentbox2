@@ -275,6 +275,9 @@
 //                           that agent's page (?page=secrets, ?page=machine…)
 //   &secrets=1              with ?page=secrets, the project's Secrets with two
 //                           secrets in it, one managed by the lead
+//   &connectors=all         with ?page=connectors, a connector in each state and
+//                           scope and a request waiting; =loading a list that
+//                           never arrives, =error one refused (dev/connectors.ts)
 //   ?phone=list|chat|lead|frame
 //                           the phone's web app against chats in every live
 //                           state, one running a turn over and over (dev/phone.tsx)
@@ -329,6 +332,7 @@ import { webStreams } from '../web/streams';
 import { agent12Chat, asleepChat, buildFixtures, claudeLimits, dropDevAgent, compactionThread, thinkingThread, richChat, richStreamText, freeRun, leadChat, installDevBridge, PROJECT, pullRequests,  seedDefaults, seedAllMedia, seedMedia, seedImageUpdate, seedSettings, seedSignedOut, seedNightly, seedMeterUsage, seedVMDisk, seedPower, seedQueryClient, seedLinuxHost, seedLinuxVM, seedMacVZ, setNotifications } from './fixtures';
 import { publishOne, seedPages } from './pages';
 import { restoreMode } from '../lib/theme';
+import { seedConnectors } from './connectors';
 import { seedPastAgents } from './pastAgents';
 import { openPanelOn, panelDefault, pickTarget, setPanel, setPanelOpen, setView, type PanelView } from '../lib/rightPanel';
 import type { ProjectSection } from '../lib/tabs';
@@ -821,6 +825,7 @@ if (meters) {
 
 if (settingsPage || appView) settingsBridge();
 if (page) pageBridge();
+if (page && params.get('connectors')) seedConnectors(queryClient, params.get('connectors')!);
 if (power) seedPower(queryClient, power, { tight: params.get('mem') === 'tight', near: params.get('claude') === 'near' });
 if (power) seedMeterUsage(queryClient);
 // The top bar's inbox, empty: the ?notify= scenarios show it full.
