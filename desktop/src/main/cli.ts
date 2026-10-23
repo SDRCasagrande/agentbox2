@@ -16,6 +16,7 @@ import { app } from 'electron';
 import { t } from '../shared/i18n/index.ts';
 import { dataDir } from './paths';
 import { onWindows } from './relay';
+import { cliFromWhere } from './wherecli';
 
 export interface CliStatus {
   linkPath: string; // where the command is installed: ~/.local/bin/agentbox
@@ -163,7 +164,7 @@ async function addToUserPath(dir: string): Promise<void> {
 async function windowsCliStatus(): Promise<CliStatus> {
   const dir = bundledBin() ? managedDir : process.env.AGENTBOX_BIN ? dirname(process.env.AGENTBOX_BIN) : managedDir;
   const onPath = (await userPath()).some((p) => p.replace(/\\+$/, '').toLowerCase() === dir.toLowerCase());
-  const path = (await run('where.exe', ['agentbox']))?.split(/\r?\n/)[0] ?? (onPath ? join(dir, exe) : null);
+  const path = cliFromWhere(await run('where.exe', ['agentbox']), process.execPath) ?? (onPath ? join(dir, exe) : null);
   return {
     linkPath: join(dir, exe),
     linked: onPath,
