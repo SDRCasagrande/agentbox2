@@ -218,6 +218,24 @@ func (c *Client) FileStatus(ctx context.Context, ref string, fresh bool) (FileSt
 	return out, c.filesDo(ctx, ref, rest, &out)
 }
 
+// WorktreeChanges is every file a worktree changed since its base, with
+// its lines added and removed, for the Changes view.
+func (c *Client) WorktreeChanges(ctx context.Context, ref string) (WorktreeChanges, error) {
+	var out WorktreeChanges
+	return out, c.filesDo(ctx, ref, "/changes", &out)
+}
+
+// FileSides reads one changed file at the worktree's base and now; previous
+// is where it was at the base when it moved.
+func (c *Client) FileSides(ctx context.Context, ref, file, previous string) (FileSides, error) {
+	var out FileSides
+	q := url.Values{"path": {file}}
+	if previous != "" {
+		q.Set("previous", previous)
+	}
+	return out, c.filesDo(ctx, ref, "/sides?"+q.Encode(), &out)
+}
+
 func (c *Client) filesDo(ctx context.Context, ref, rest string, out any) error {
 	path, err := filesPath(ref)
 	if err != nil {

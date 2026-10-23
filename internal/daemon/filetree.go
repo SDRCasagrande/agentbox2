@@ -359,3 +359,41 @@ func relDir(p string) string {
 	}
 	return ""
 }
+
+// fileChanges is everything a chat's worktree changed since its base, with
+// its lines added and removed: the Changes view's tree.
+func (s *Server) fileChanges(from agentFrom) func(http.ResponseWriter, *http.Request) error {
+	return func(w http.ResponseWriter, r *http.Request) error {
+		_, root, branch, err := s.fileRoot(r, from)
+		if err != nil {
+			return err
+		}
+		commit, name := worktreefs.Base(root, branch)
+		files, truncated, err := worktreefs.Changes(root, commit)
+		if err != nil {
+			return err
+		}
+		if files == nil {
+			files = []api.WorktreeChange{}
+		}
+		return writeJSON(w, http.StatusOK, api.WorktreeChanges{Base: name, Files: files, Truncated: truncated})
+	}
+}
+
+// fileSides is one changed file at the base and now, for the Changes view to
+// diff.
+func (s *Server) fileSides(from agentFrom) func(http.ResponseWriter, *http.Request) error {
+	return func(w http.ResponseWriter, r *http.Request) error {
+		_, root, branch, err := s.fileRoot(r, from)
+		if err != nil {
+			return err
+		}
+		commit, _ := worktreefs.Base(root, branch)
+		q := r.URL.Query()
+		sides, err := worktreefs.Sides(root, commit, q.Get("path"), q.Get("previous"))
+		if err != nil {
+			return fileErr(err)
+		}
+		return writeJSON(w, http.StatusOK, sides)
+	}
+}

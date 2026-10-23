@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowDown, Archive, Ellipsis, EyeOff, FolderTree, LoaderCircle, MessageSquarePlus, Play, RefreshCw, Search, Trash2 } from 'lucide-react';
+import { ArrowDown, Archive, Ellipsis, EyeOff, FolderTree, GitCompare, LoaderCircle, MessageSquarePlus, Play, RefreshCw, Search, Trash2 } from 'lucide-react';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import type * as T from '../../../shared/api';
@@ -20,6 +20,7 @@ import { Composer } from './Composer';
 import { leadOn } from '../../lib/leadRunner';
 import { FindBar } from './FindBar';
 import { FileLinksProvider, FilePanel } from '../files/FilePanel';
+import { openChanges } from '../../lib/changes';
 import { hasFiles, requestFind, setPanelPrefs, usePanelPrefs } from '../../lib/files';
 import { openPanelOn } from '../../lib/rightPanel';
 import { useUiV2 } from '../../lib/uiV2';
@@ -466,6 +467,11 @@ export function useChatMenu(agent: T.Agent | undefined): { items: ReactNode; but
         <MenuCheckboxItem icon={FolderTree} hint={shortcut('P')} checked={panel.open} onCheckedChange={(open) => setPanelPrefs({ open })} data-files-toggle>
           {t('files.panel.files')}
         </MenuCheckboxItem>
+      )}
+      {hasFiles(agent.ref) && (
+        <MenuItem icon={GitCompare} onSelect={() => openChanges(agent.ref)} data-changes-menu>
+          {t('changes.open')}
+        </MenuItem>
       )}
       {newChatItem}
       {reloadItem}

@@ -7,9 +7,6 @@ import {
   CircleX,
   ExternalLink,
   FileDiff,
-  FileText,
-  Folder,
-  FolderOpen,
   FolderTree,
   List,
   GitMerge,
@@ -21,7 +18,6 @@ import { useCallback, useEffect, useRef, useState, type Dispatch, type ReactNode
 import type { ThemedToken } from 'shiki/core';
 import * as T from '../../shared/api';
 import { api } from '../lib/api';
-import { highlight } from '../lib/highlight';
 import { useT, type MessageKey } from '../lib/i18n';
 import {
   fileKind,
@@ -38,11 +34,12 @@ import {
   type DiffLine,
   type FileKind,
   type LabelEdit,
-  type TreeNode,
 } from '../lib/pulls';
-import { useMode } from '../lib/theme';
 import { cn, errorMessage, timeAgo } from '../lib/utils';
 import { LabelRemoveButton } from './LabelRemoveButton';
+import { ChangeTree } from './diff/ChangeTree';
+import { Code } from './diff/Code';
+import { useTokens } from './diff/useTokens';
 import { Markdown } from './chat/Markdown';
 import { Badge, type BadgeVariant } from './ui/badge';
 import { Button } from './ui/button';
@@ -504,7 +501,7 @@ function FilesTree({ project, pr, files, state, setState, onLoaded }: FilesViewP
           }
         }}
       >
-        <TreeLevel
+        <ChangeTree
           nodes={tree}
           depth={0}
           selected={selected?.path}
@@ -521,68 +518,6 @@ function FilesTree({ project, pr, files, state, setState, onLoaded }: FilesViewP
         )}
       </div>
     </div>
-  );
-}
-
-const statusTints: Record<string, string> = { added: 'text-emerald-400', removed: 'text-rose-400', renamed: 'text-sky-400' };
-
-function TreeLevel({
-  nodes,
-  depth,
-  selected,
-  folded,
-  onSelect,
-  onFold,
-}: {
-  nodes: TreeNode<T.PullFile>[];
-  depth: number;
-  selected?: string;
-  folded: ReadonlySet<string>;
-  onSelect: (path: string) => void;
-  onFold: (path: string) => void;
-}) {
-  const indent = { paddingLeft: `${0.75 + depth * 0.85}rem` };
-  return (
-    <ul>
-      {nodes.map((node) =>
-        node.kind === 'dir' ? (
-          <li key={`d:${node.path}`}>
-            <button
-              type="button"
-              style={indent}
-              onClick={() => onFold(node.path)}
-              className="flex w-full min-w-0 items-center gap-1.5 py-1 pr-3 text-left text-[12.5px] text-muted hover:bg-surface-raised hover:text-primary"
-              title={node.path}
-            >
-              <ChevronRight className={cn('size-3 shrink-0 transition-transform', !folded.has(node.path) && 'rotate-90')} />
-              {folded.has(node.path) ? <Folder className="size-3.5 shrink-0" /> : <FolderOpen className="size-3.5 shrink-0" />}
-              <span className="min-w-0 truncate">{node.name}</span>
-            </button>
-            {!folded.has(node.path) && (
-              <TreeLevel nodes={node.children} depth={depth + 1} selected={selected} folded={folded} onSelect={onSelect} onFold={onFold} />
-            )}
-          </li>
-        ) : (
-          <li key={`f:${node.file.path}`}>
-            <button
-              type="button"
-              style={{ paddingLeft: `${0.75 + depth * 0.85 + 1.125}rem` }}
-              onClick={() => onSelect(node.file.path)}
-              data-tree-file={node.file.path}
-              aria-current={node.file.path === selected || undefined}
-              className={cn(
-                'flex w-full min-w-0 items-center gap-1.5 py-1 pr-3 text-left text-[12.5px] text-secondary hover:bg-surface-raised focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-brand-400',
-                node.file.path === selected && 'bg-surface-strong text-title',
-              )}
-              title={node.file.path}
-            >
-              <FileText className={cn('size-3.5 shrink-0', statusTints[node.file.status] ?? 'text-subtle')} />
-              <span className={cn('min-w-0 truncate', node.file.status === 'removed' && 'line-through decoration-rose-400/60')}>{node.name}</span>
-            </button>
-          </li>
-        ),
-      )}
-    </ul>
   );
 }
 
@@ -716,13 +651,7 @@ function Diff({
                 <td className="w-10 select-none px-2 text-right align-top text-faint">{isCode ? line.new : ''}</td>
                 <td className="w-4 select-none align-top text-subtle">{signs[line.kind]}</td>
                 <td className="whitespace-pre pr-4 text-tertiary">
-                  {lineTokens
-                    ? lineTokens.map((token, j) => (
-                        <span key={j} style={{ color: token.color, fontStyle: token.fontStyle === 1 ? 'italic' : undefined }}>
-                          {token.content}
-                        </span>
-                      ))
-                    : line.text}
+                  {lineTokens ? <Code text={line.text} tokens={lineTokens} /> : line.text}
                 </td>
               </tr>
             );
@@ -734,23 +663,11 @@ function Diff({
 }
 
 // useHighlighted highlights a diff's code lines, all together so a line is
-// read in the context of the ones around it, again when the theme turns over.
+// read in the context of the ones around it.
 function useHighlighted(lines: DiffLine[] | null, lang: string | undefined): ThemedToken[][] | null {
-  const mode = useMode();
   const code = lines
     ?.filter((l) => l.kind === 'add' || l.kind === 'del' || l.kind === 'context')
     .map((l) => l.text)
     .join('\n');
-  const [out, setOut] = useState<{ code: string; mode: string; tokens: ThemedToken[][] } | null>(null);
-  useEffect(() => {
-    if (!lang || code === undefined) return;
-    let current = true;
-    highlight(code, lang)
-      .then((tokens) => current && setOut({ code, mode, tokens }))
-      .catch(() => {});
-    return () => {
-      current = false;
-    };
-  }, [code, lang, mode]);
-  return out && out.code === code && out.mode === mode ? out.tokens : null;
+  return useTokens(code, lang);
 }

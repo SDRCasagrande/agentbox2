@@ -116,6 +116,30 @@ func TestFileTreeRoutes(t *testing.T) {
 		t.Errorf("FileStatus(fresh) = %+v, %v; want scripts/x.sh untracked", st, err)
 	}
 
+	// The Changes view: every changed file with its lines, and one file's two
+	// versions.
+	changes, err := d.client.WorktreeChanges(ctx, ref)
+	if err != nil || changes.Base != "HEAD" {
+		t.Fatalf("WorktreeChanges() = %+v, %v", changes, err)
+	}
+	counted := map[string]api.WorktreeChange{}
+	for _, c := range changes.Files {
+		counted[c.Path] = c
+	}
+	if c := counted["README.md"]; c.Status != api.FileModified || c.Additions != 1 || c.Deletions != 0 {
+		t.Errorf("WorktreeChanges()[README.md] = %+v", c)
+	}
+	if c := counted["new.txt"]; c.Status != api.FileUntracked || c.Additions != 1 {
+		t.Errorf("WorktreeChanges()[new.txt] = %+v", c)
+	}
+	sides, err := d.client.FileSides(ctx, ref, "README.md", "")
+	if err != nil || sides.OldText != before.Text || sides.NewText != before.Text+"more\n" {
+		t.Errorf("FileSides(README) = %+v, %v", sides, err)
+	}
+	if _, err := d.client.FileSides(ctx, ref, "nope.txt", ""); !api.IsNotFound(err) {
+		t.Errorf("FileSides(missing) = %v, want a 404", err)
+	}
+
 	if _, err := d.client.ListFolder(ctx, "home", "", false); err == nil {
 		t.Error("ListFolder(home) succeeded")
 	}

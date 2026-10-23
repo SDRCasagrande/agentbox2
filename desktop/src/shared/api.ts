@@ -285,6 +285,32 @@ export interface FilesChange {
   files: string[];
 }
 
+export interface WorktreeChanges {
+  base: string;
+  files: WorktreeChange[];
+  truncated: boolean;
+}
+
+export interface WorktreeChange {
+  path: string;
+  previousPath?: string;
+  status: string;
+  additions: number;
+  deletions: number;
+  binary?: boolean;
+}
+
+export interface FileSides {
+  path: string;
+  previousPath?: string;
+  oldText: string;
+  newText: string;
+  oldMissing?: boolean;
+  newMissing?: boolean;
+  binary?: boolean;
+  tooLarge?: boolean;
+}
+
 export interface ArchivedAgent {
   ref: string;
   project: string;
@@ -2719,6 +2745,7 @@ export const FileModified = "modified";
 export const FileAdded = "added";
 export const FileDeleted = "deleted";
 export const FileUntracked = "untracked";
+export const FileRenamed = "renamed";
 export const SetupOK = "ok";
 export const SetupMissing = "missing";
 export const SetupOutdated = "outdated";

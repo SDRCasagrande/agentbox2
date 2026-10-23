@@ -1,11 +1,14 @@
 import { diffLines } from 'diff';
-import { ChevronRight, FileCode2 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { ChevronRight, FileCode2, GitCompare } from 'lucide-react';
+import { use, useMemo, useState } from 'react';
 import type * as T from '../../../shared/api';
+import { openChanges } from '../../lib/changes';
 import type { ChangedFile } from '../../lib/chat';
 import { useT } from '../../lib/i18n';
 import { cn } from '../../lib/utils';
+import { FileLinks } from '../files/FilePanel';
 import { OpenFileButton } from '../files/OpenFileButton';
+import { Tip } from '../ui/tooltip';
 
 // relativePath shows a path inside the agent's worktree relative to it.
 export function relativePath(path: string, root: string): string {
@@ -13,15 +16,17 @@ export function relativePath(path: string, root: string): string {
 }
 
 // ChangedFiles is the card under a finished turn: the files its tool calls
-// edited, each with its diff.
+// edited, each with its diff, and a way into the Changes view for the whole
+// branch, at one of them.
 export function ChangedFiles({ files, root }: { files: ChangedFile[]; root: string }) {
   const t = useT();
+  const links = use(FileLinks);
   const [open, setOpen] = useState(false);
   const [openFile, setOpenFile] = useState<string | null>(null);
   const added = files.reduce((n, f) => n + f.added, 0);
   const removed = files.reduce((n, f) => n + f.removed, 0);
   return (
-    <div className="mb-5 overflow-hidden rounded-xl border border-line bg-surface-faint" data-chat-changes>
+    <div className="relative mb-5 overflow-hidden rounded-xl border border-line bg-surface-faint" data-chat-changes>
       <button className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-surface-faint" aria-expanded={open} onClick={() => setOpen(!open)}>
         <ChevronRight className={cn('size-3.5 text-subtle transition-transform', open && 'rotate-90')} />
         <span className="font-medium text-secondary">
@@ -31,6 +36,17 @@ export function ChangedFiles({ files, root }: { files: ChangedFile[]; root: stri
         <span className={cn('-ml-1 font-mono', removed ? 'text-rose-400' : 'text-faint')}>−{removed}</span>
         {!open && <span className="text-subtle">{t('chat.changedFiles.show')}</span>}
       </button>
+      {links && (
+        <button
+          type="button"
+          className="absolute right-2 top-1.5 flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11.5px] font-medium text-brand-300 transition-colors hover:bg-surface-raised"
+          onClick={() => openChanges(links.ref, files[0] && relativePath(files[0].path, root))}
+          data-chat-changes-open
+        >
+          <GitCompare className="size-3.5" />
+          {t('chat.changedFiles.openInChanges')}
+        </button>
+      )}
       {open && (
         <div className="border-t border-line-faint py-1">
           {files.map((file) => (
@@ -48,6 +64,19 @@ export function ChangedFiles({ files, root }: { files: ChangedFile[]; root: stri
                 <span className={file.added ? 'text-emerald-400' : 'text-faint'}>+{file.added}</span>
                 <span className={file.removed ? 'text-rose-400' : 'text-faint'}>−{file.removed}</span>
               </button>
+              {links && (
+                <Tip label={t('chat.changedFiles.openInChanges')}>
+                  <button
+                    type="button"
+                    aria-label={t('chat.changedFiles.openInChanges')}
+                    className="flex size-6 shrink-0 items-center justify-center rounded-md text-subtle opacity-0 transition hover:bg-surface-raised hover:text-primary focus-visible:opacity-100 group-hover/file:opacity-100"
+                    onClick={() => openChanges(links.ref, relativePath(file.path, root))}
+                    data-chat-change-open={file.path}
+                  >
+                    <GitCompare className="size-3.5" />
+                  </button>
+                </Tip>
+              )}
               <OpenFileButton path={file.path} className="opacity-0 focus-visible:opacity-100 group-hover/file:opacity-100" />
               </div>
               {openFile === file.path && (
