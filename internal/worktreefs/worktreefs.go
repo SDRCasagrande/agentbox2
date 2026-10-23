@@ -293,6 +293,11 @@ func imageType(p string) string {
 	return images[strings.ToLower(path.Ext(p))]
 }
 
+var (
+	errBaseTooLarge = errors.New("the base version is too large to compare")
+	errBaseBinary   = errors.New("the base version is binary")
+)
+
 // BaseText is what the file was at base, or missing when it wasn't there.
 func BaseText(root, base, rel string) (text string, missing bool, err error) {
 	out, err := git(root, nil, "cat-file", "-s", base+":"+rel)
@@ -300,14 +305,14 @@ func BaseText(root, base, rel string) (text string, missing bool, err error) {
 		return "", true, nil
 	}
 	if n, _ := strconv.ParseInt(strings.TrimSpace(out), 10, 64); n > FullLimit {
-		return "", false, errors.New("the base version is too large to compare")
+		return "", false, errBaseTooLarge
 	}
 	out, err = git(root, nil, "show", base+":"+rel)
 	if err != nil {
 		return "", false, err
 	}
 	if IsBinary([]byte(out)) {
-		return "", false, errors.New("the base version is binary")
+		return "", false, errBaseBinary
 	}
 	return out, false, nil
 }

@@ -77,3 +77,44 @@ type FilesChange struct {
 	Dirs  []string `json:"dirs"`
 	Files []string `json:"files"`
 }
+
+// FileRenamed is a change of WorktreeChanges that moved a file, maybe editing
+// it too: git found its PreviousPath gone and a file much like it here.
+const FileRenamed = "renamed"
+
+// WorktreeChanges is every file a worktree changed since its base (as in
+// FileStatus.Base), committed or not, each with the lines it added and
+// removed: the app's Changes view. Base is FileStatus.Base's name for it.
+type WorktreeChanges struct {
+	Base      string           `json:"base"`
+	Files     []WorktreeChange `json:"files"`
+	Truncated bool             `json:"truncated"`
+}
+
+// WorktreeChange is one file of WorktreeChanges. Status is FileModified,
+// FileAdded, FileDeleted, FileRenamed or FileUntracked; a binary file counts
+// no lines.
+type WorktreeChange struct {
+	Path         string `json:"path"`
+	PreviousPath string `json:"previousPath,omitempty"`
+	Status       string `json:"status"`
+	Additions    int    `json:"additions"`
+	Deletions    int    `json:"deletions"`
+	Binary       bool   `json:"binary,omitempty"`
+}
+
+// FileSides is one changed file whole, at the base (OldText, from
+// PreviousPath when it moved) and in the worktree (NewText), for the app to
+// diff with all the context around each change. OldMissing and NewMissing say
+// a side isn't there: the file was added, or deleted. Binary and TooLarge
+// mean neither text was sent.
+type FileSides struct {
+	Path         string `json:"path"`
+	PreviousPath string `json:"previousPath,omitempty"`
+	OldText      string `json:"oldText"`
+	NewText      string `json:"newText"`
+	OldMissing   bool   `json:"oldMissing,omitempty"`
+	NewMissing   bool   `json:"newMissing,omitempty"`
+	Binary       bool   `json:"binary,omitempty"`
+	TooLarge     bool   `json:"tooLarge,omitempty"`
+}
