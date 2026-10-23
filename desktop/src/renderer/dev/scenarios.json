@@ -1892,5 +1892,47 @@
     "query": "app=project&v2=1&pins=agentbox,storefront&lang=pt-BR&theme=dark",
     "width": 1920,
     "height": 1080
+  },
+  {
+    "id": "page-connectors-dark",
+    "description": "The project's Connectors page with a connector in each state and scope, an AgentBox-wide pair with their overrides, a request waiting, and the catalog below — dark",
+    "query": "page=connectors&connectors=all&theme=dark",
+    "width": 1280,
+    "height": 1900
+  },
+  {
+    "id": "page-connectors-empty-dark",
+    "description": "The project's Connectors page with none of its own: the empty state over the catalog — dark",
+    "query": "page=connectors&theme=dark",
+    "width": 1280,
+    "height": 900
+  },
+  {
+    "id": "page-connectors-light",
+    "description": "The project's Connectors page with a connector in each state and scope, an AgentBox-wide pair with their overrides, a request waiting, and the catalog below — light",
+    "query": "page=connectors&connectors=all&theme=light",
+    "width": 1280,
+    "height": 1900
+  },
+  {
+    "id": "page-connectors-empty-light",
+    "description": "The project's Connectors page with none of its own: the empty state over the catalog — light",
+    "query": "page=connectors&theme=light",
+    "width": 1280,
+    "height": 900
+  },
+  {
+    "id": "page-connectors-loading-dark",
+    "description": "The project's Connectors page while its list is on its way — dark",
+    "query": "page=connectors&connectors=loading&theme=dark",
+    "width": 1280,
+    "height": 900
+  },
+  {
+    "id": "page-connectors-error-dark",
+    "description": "The project's Connectors page while its list is refused by the daemon — dark",
+    "query": "page=connectors&connectors=error&theme=dark",
+    "width": 1280,
+    "height": 900
   }
 ]

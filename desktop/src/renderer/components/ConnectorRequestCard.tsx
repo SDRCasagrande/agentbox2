@@ -7,6 +7,7 @@ import { api } from '../lib/api';
 import { useT } from '../lib/i18n';
 import { type ConnectorRequest, connectorRequest, RequestConnector } from '../lib/connectors';
 import { errorMessage } from '../lib/utils';
+import { ConnectorMark } from './ConnectorMark';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 
@@ -25,8 +26,8 @@ export function ConnectorRequestCard({ question }: { question: T.Question }) {
   const waiting = question.status === 'pending' || question.status === 'escalated';
   return (
     <div className="mt-1.5 grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1.5" data-thread-connector={question.id}>
-      <p className="flex items-center gap-1.5 text-[12px] font-medium text-secondary">
-        <Plug className="size-3.5 shrink-0 text-amber-300/90" />
+      <p className="flex items-center gap-2 text-[12px] font-medium text-secondary">
+        <ConnectorMark url={req?.url} preset={req?.preset?.id} size="sm" />
         <span className="min-w-0 break-words">
           {t.rich('chat.connector.needs', {
             name: <code className="font-mono text-[11.5px]">{req?.preset?.label ?? req?.name ?? '?'}</code>,

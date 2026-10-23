@@ -56,8 +56,14 @@ export const connectorPresets: ConnectorPreset[] = [
   },
 ];
 
+const sameServer = (a: string, b: string) => a.replace(/\/+$/, '') === b.replace(/\/+$/, '');
+
 export const presetFor = (nameOrUrl: string): ConnectorPreset | undefined =>
   connectorPresets.find((p) => p.name === nameOrUrl || p.url === nameOrUrl.replace(/\/+$/, ''));
+
+// presetForURL is the preset whose server this is, by URL alone: a connector
+// named "notion" that points elsewhere is not Notion.
+export const presetForURL = (url: string): ConnectorPreset | undefined => connectorPresets.find((p) => sameServer(p.url, url));
 
 // A connector's name is what its tools are known by; the daemon takes
 // lowercase letters, digits, - and _.
@@ -256,15 +262,13 @@ export interface ConnectorRequest {
   preset?: ConnectorPreset;
 }
 
-const sameServer = (a: string, b: string) => a.replace(/\/+$/, '') === b.replace(/\/+$/, '');
-
 export function connectorRequest(q: T.Question): ConnectorRequest | undefined {
   if (q.kind !== RequestConnector) return undefined;
   const asked = (q.connector ?? '').trim().toLowerCase();
   const given = q.url?.trim() ?? '';
   const named = presetFor(asked);
   let preset: ConnectorPreset | undefined;
-  if (given) preset = connectorPresets.find((p) => sameServer(p.url, given));
+  if (given) preset = presetForURL(given);
   else preset = named;
   const url = given || preset?.url || '';
   const name = asked || preset?.name || connectorName(url);
