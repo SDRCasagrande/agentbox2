@@ -7,9 +7,6 @@ import {
   CircleX,
   ExternalLink,
   FileDiff,
-  FileText,
-  Folder,
-  FolderOpen,
   FolderTree,
   List,
   GitMerge,
@@ -35,10 +32,10 @@ import {
   withEdits,
   type FileKind,
   type LabelEdit,
-  type TreeNode,
 } from '../lib/pulls';
 import { cn, errorMessage, timeAgo } from '../lib/utils';
 import { DiffTable, useHighlighted } from './DiffTable';
+import { ChangeTree } from './diff/ChangeTree';
 import { LabelRemoveButton } from './LabelRemoveButton';
 import { Markdown } from './chat/Markdown';
 import { Badge, type BadgeVariant } from './ui/badge';
@@ -552,7 +549,7 @@ function FilesTree({ project, pr, files, state, setState, onLoaded }: FilesViewP
           }
         }}
       >
-        <TreeLevel
+        <ChangeTree
           nodes={tree}
           depth={0}
           selected={selected?.path}
@@ -569,68 +566,6 @@ function FilesTree({ project, pr, files, state, setState, onLoaded }: FilesViewP
         )}
       </div>
     </div>
-  );
-}
-
-const statusTints: Record<string, string> = { added: 'text-emerald-400', removed: 'text-rose-400', renamed: 'text-sky-400' };
-
-function TreeLevel({
-  nodes,
-  depth,
-  selected,
-  folded,
-  onSelect,
-  onFold,
-}: {
-  nodes: TreeNode<T.PullFile>[];
-  depth: number;
-  selected?: string;
-  folded: ReadonlySet<string>;
-  onSelect: (path: string) => void;
-  onFold: (path: string) => void;
-}) {
-  const indent = { paddingLeft: `${0.75 + depth * 0.85}rem` };
-  return (
-    <ul>
-      {nodes.map((node) =>
-        node.kind === 'dir' ? (
-          <li key={`d:${node.path}`}>
-            <button
-              type="button"
-              style={indent}
-              onClick={() => onFold(node.path)}
-              className="flex w-full min-w-0 items-center gap-1.5 py-1 pr-3 text-left text-[12.5px] text-muted hover:bg-surface-raised hover:text-primary"
-              title={node.path}
-            >
-              <ChevronRight className={cn('size-3 shrink-0 transition-transform', !folded.has(node.path) && 'rotate-90')} />
-              {folded.has(node.path) ? <Folder className="size-3.5 shrink-0" /> : <FolderOpen className="size-3.5 shrink-0" />}
-              <span className="min-w-0 truncate">{node.name}</span>
-            </button>
-            {!folded.has(node.path) && (
-              <TreeLevel nodes={node.children} depth={depth + 1} selected={selected} folded={folded} onSelect={onSelect} onFold={onFold} />
-            )}
-          </li>
-        ) : (
-          <li key={`f:${node.file.path}`}>
-            <button
-              type="button"
-              style={{ paddingLeft: `${0.75 + depth * 0.85 + 1.125}rem` }}
-              onClick={() => onSelect(node.file.path)}
-              data-tree-file={node.file.path}
-              aria-current={node.file.path === selected || undefined}
-              className={cn(
-                'flex w-full min-w-0 items-center gap-1.5 py-1 pr-3 text-left text-[12.5px] text-secondary hover:bg-surface-raised focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-brand-400',
-                node.file.path === selected && 'bg-surface-strong text-title',
-              )}
-              title={node.file.path}
-            >
-              <FileText className={cn('size-3.5 shrink-0', statusTints[node.file.status] ?? 'text-subtle')} />
-              <span className={cn('min-w-0 truncate', node.file.status === 'removed' && 'line-through decoration-rose-400/60')}>{node.name}</span>
-            </button>
-          </li>
-        ),
-      )}
-    </ul>
   );
 }
 

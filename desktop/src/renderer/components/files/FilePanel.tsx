@@ -1,8 +1,9 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Eye, EyeOff, File, FolderTree, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, X } from 'lucide-react';
+import { Eye, EyeOff, File, FolderTree, GitCompare, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, X } from 'lucide-react';
 import { createContext, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import type * as T from '../../../shared/api';
 import { api } from '../../lib/api';
+import { openChanges } from '../../lib/changes';
 import { closeFile, narrowPanel, openFile, panelLayout, resolveFile, setPanelPrefs, statusesOf, treeMin, useFindRequests, useOpenedFile, usePanelPrefs } from '../../lib/files';
 import { matchFiles } from '../../lib/mentions';
 import { useT } from '../../lib/i18n';
@@ -13,9 +14,9 @@ import { FileViewer } from './FileViewer';
 
 // FileLinks is how a chat's messages and tool calls open a file in the panel
 // beside them: root is the worktree, to read absolute paths against, and open
-// shows a path, relative to it, at a line. Outside a chat with files it is
-// null, and paths stay text.
-export const FileLinks = createContext<{ root: string; open: (path: string, line?: number) => void } | null>(null);
+// shows a path, relative to it, at a line; ref is the chat's, for the Changes
+// view. Outside a chat with files it is null, and paths stay text.
+export const FileLinks = createContext<{ ref: string; root: string; open: (path: string, line?: number) => void } | null>(null);
 
 // FileLinksProvider gives a chat's timeline and composer its FileLinks. A bare
 // file name is looked up among the worktree's files first.
@@ -23,6 +24,7 @@ export function FileLinksProvider({ agent, children }: { agent: T.Agent; childre
   const queryClient = useQueryClient();
   const value = useMemo(
     () => ({
+      ref: agent.ref,
       root: agent.worktree,
       open: (path: string, line?: number) => {
         if (path.includes('/')) return openFile(agent.ref, path, line);
@@ -166,6 +168,11 @@ export function FileBrowser({ fileRef, root, width, split, onClose }: { fileRef:
             {prefs.ignored ? <Eye /> : <EyeOff />}
           </IconButton>
         )}
+        {live && (
+          <IconButton label={t('changes.openTip')} onClick={() => openChanges(fileRef, opened?.path)}>
+            <GitCompare />
+          </IconButton>
+        )}
         <IconButton label={t('files.panel.refresh')} onClick={refresh}>
           <RefreshCw />
         </IconButton>
@@ -247,6 +254,12 @@ export function FileBrowser({ fileRef, root, width, split, onClose }: { fileRef:
       {status.data && Object.keys(status.data.changes).length > 0 && !query && (
         <div className="flex h-6 shrink-0 items-center gap-1 border-t border-line-faint px-3 text-[11px] text-faint" data-file-changes>
           {t('files.panel.changes', { count: Object.keys(status.data.changes).length, base: status.data.base })}
+          {live && (
+            <button type="button" className="ml-auto flex items-center gap-1 rounded px-1 font-medium text-brand-300 hover:underline" onClick={() => openChanges(fileRef, opened?.path)} data-file-changes-open>
+              <GitCompare className="size-3" />
+              {t('changes.open')}
+            </button>
+          )}
         </div>
       )}
     </div>

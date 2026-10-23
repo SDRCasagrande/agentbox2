@@ -336,6 +336,11 @@ export const api = {
   sqlite: (ref: string, path: string, table = '', offset = 0, limit = 0) =>
     call<T.SQLiteQuery>('GET', `${filesBase(ref)}/sqlite?${new URLSearchParams({ path, ...(table ? { table, offset: String(offset), limit: String(limit) } : {}) })}`),
   fileStatus: (ref: string, fresh = false) => call<T.FileStatus>('GET', `${filesBase(ref)}/status${fresh ? '?fresh=1' : ''}`),
+  // The Changes view (components/changes): every file changed since the base,
+  // and one of them at the base and now.
+  worktreeChanges: (ref: string) => call<T.WorktreeChanges>('GET', `${filesBase(ref)}/changes`),
+  fileSides: (ref: string, path: string, previous?: string) =>
+    call<T.FileSides>('GET', `${filesBase(ref)}/sides?${new URLSearchParams({ path, ...(previous ? { previous } : {}) })}`),
 
   // Scheduled tasks (internal/daemon/schedules.go): a project's, and their runs.
   schedules: (projectName: string) => call<T.Schedule[]>('GET', `${project(projectName)}/schedules`),

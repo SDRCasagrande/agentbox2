@@ -8,6 +8,7 @@ import { closeSettingsEvent, openSettingsEvent, openSettingsSection, rememberSec
 import { openProjectEvent } from "./components/chat/ProjectMessageCard";
 import { openAgentEvent } from "./components/chat/AgentPermissionCard";
 import { isSearchShortcut, SearchModal } from "./components/SearchModal";
+import { ChangesHost } from "./components/changes/ChangesView";
 import { openSearch, toggleSearch } from "./lib/searchOpen";
 import { ErrorReports } from "./components/ErrorReports";
 import { SnapComposer } from "./components/SnapComposer";
@@ -795,6 +796,7 @@ export function App({ initial }: { initial?: View } = {}) {
         }
       />
       <SearchModal onOpen={openFound} />
+      <ChangesHost />
       {v2 && <NewTaskDialog onSelect={select} />}
       <FanOutDialog onSelect={select} />
       {v2 && <ShortcutSheet />}
