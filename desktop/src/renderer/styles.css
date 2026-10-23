@@ -457,6 +457,20 @@
 }
 
 @layer components {
+  /* The phone's page fills the screen (viewport-fit=cover in web.html): as an
+     app on the home screen, under iOS's status bar and home indicator, and
+     beside the notch in landscape. Its screens keep their content clear of
+     them; env() is 0 wherever there's nothing to clear. */
+  .phone-safe {
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  /* And the whole app, a hub's web version kept on a home screen. */
+  @media (display-mode: standalone) {
+    #root:not(:has(.phone-safe)) {
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+  }
+
   .panel {
     border: 1px solid var(--ab-line);
     background: linear-gradient(180deg, var(--ab-panel-top), var(--ab-panel-bottom));

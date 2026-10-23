@@ -40,6 +40,7 @@ import { projectLabel } from '../lib/projectName';
 import { useConnection } from '../lib/events';
 import { cn, errorMessage } from '../lib/utils';
 import { reconnectNow } from './bridge';
+import { InstallNote } from './Install';
 import { PlainHTTPNote } from './PhonePair';
 import { seen } from './seen';
 
@@ -124,7 +125,7 @@ export function PhoneApp({ phone }: { phone: T.LANPhone }) {
     return () => window.removeEventListener(openAgentEvent, open);
   }, []);
   return (
-    <div className="flex h-dvh flex-col" data-phone-app>
+    <div className="phone-safe flex h-dvh flex-col" data-phone-app>
       <ConnectionBar />
       {route.kind === 'list' ? (
         <ChatList phone={phone} onOpen={go} />
@@ -281,6 +282,7 @@ function ChatList({ phone, onOpen }: { phone: T.LANPhone; onOpen: (route: Route)
           <p className="text-[12px] text-subtle">
             {t.rich('web.phone.pairedAs', { name: <span className="text-secondary">{phone.name}</span> })}
           </p>
+          <InstallNote />
           <PlainHTTPNote />
           <div>
             <button type="button" className="text-[12px] text-rose-300 underline-offset-2 hover:underline" disabled={unpair.isPending} onClick={() => unpair.mutate()}>
