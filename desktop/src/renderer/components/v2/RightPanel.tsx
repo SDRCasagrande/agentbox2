@@ -63,6 +63,7 @@ import { ErrorBoundary } from '../ErrorBoundary';
 import { FileBrowser } from '../files/FilePanel';
 import { MediaTab } from '../MediaTab';
 import { PageIcon } from '../pages/PageThumb';
+import { ConnectorMark } from '../ConnectorMark';
 import { PagesPanel } from '../pages/PagesPanel';
 import { useProjectPages } from '../pages/usePages';
 import { ProjectIcon } from '../ProjectIcon';
@@ -952,7 +953,7 @@ function Pages({ project, whose, agents }: { project: string; whose: Whose; agen
   if (!query.data?.connector) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center text-[12.5px] text-subtle" data-panel-pages-off>
-        <PageIcon className="size-7 text-faint" />
+        <ConnectorMark preset="hatch" size="lg" className="mb-1 text-faint" />
         {query.isPending ? t('common.loading') : t('panel.pages.off')}
       </div>
     );

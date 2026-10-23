@@ -23,7 +23,7 @@ export function projectConnectors(): T.Connector[] {
     connector('linear', 'https://mcp.linear.app/mcp', { status: 'connecting', agents: [] }),
     connector('sentry', 'https://mcp.sentry.dev/mcp', { status: 'error', error: 'invalid_grant: the refresh token was revoked by the authorization server', agents: [`${PROJECT}/agent-12`] }),
     connector('figma', 'https://mcp.figma.com/mcp', { auth: 'secret', secret: 'FIGMA_TOKEN', header: 'X-Figma-Token', scheme: '', connectedAt: ago(5 * hour) }),
-    connector('acme-internal-tools', 'https://mcp.internal.acme-corporation.example.com/v2/mcp/streamable', { auth: 'none', status: 'disconnected', enabled: false, agents: [] }),
+    connector('acme-internal-tools', 'https://mcp.internal.acme-corporation.example.com/v2/mcp/streamable', { auth: 'none', enabled: false, agents: [] }),
     connector('hatch', 'https://usehatch.dev/mcp', { scope: 'agentbox', project: '', override: 'on', connectedAt: ago(26 * hour), issuer: 'https://usehatch.dev' }),
     connector('github', 'https://api.githubcopilot.com/mcp/', { scope: 'agentbox', project: '', status: 'disconnected', agents: [] }),
   ];

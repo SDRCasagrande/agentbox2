@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Download, ExternalLink, Globe, LoaderCircle, Lock, Plug, Plus, Unplug, X } from 'lucide-react';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { Bot, Check, CircleAlert, Download, ExternalLink, FolderGit2, Globe, LoaderCircle, Lock, Plug, Plus, RotateCw, Trash2, Unplug } from 'lucide-react';
+import { Fragment, type ReactElement, type ReactNode, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import type * as T from '../../shared/api';
 import * as A from '../../shared/api';
@@ -11,6 +11,7 @@ import {
   type ConnectorOverride,
   type ConnectorPreset,
   type FieldProblem,
+  type StatusTone,
   connectorFormProblems,
   connectorName,
   connectorPresets,
@@ -26,11 +27,13 @@ import { useNow } from '../lib/useNow';
 import { cn, errorMessage, timeAgo } from '../lib/utils';
 import { ConfirmDialog } from './ConfirmDialog';
 import { ConnectorImportDialog } from './ConnectorImportDialog';
+import { ConnectorMark } from './ConnectorMark';
 import { ConnectorRequestCards } from './ConnectorRequestCard';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Card, Code, Notice } from './ui/card';
 import { Field, Input } from './ui/input';
+import { Skeleton } from './ui/skeleton';
 import { Switch } from './ui/switch';
 import { Tip } from './ui/tooltip';
 
@@ -69,36 +72,6 @@ export function ConnectorsTab({ target, embedded }: { target: string; embedded?:
       <div className={cn('mx-auto grid gap-4', !embedded && 'max-w-4xl')}>
         {!wide && <ConnectorRequestCards project={project} agent={agent} />}
 
-        <Catalog target={target} scope={scope} have={connectors.data ?? []} onAdded={refresh} connect={connect.start} />
-
-        {fromAgentBox.length > 0 && (
-          <Card
-            title={t('project.connectors.fromAgentBox', { count: fromAgentBox.length })}
-            icon={Globe}
-            description={t('project.connectors.fromAgentBoxDescription')}
-          >
-            <ul className="grid gap-2" aria-label={t('project.connectors.agentBoxAria')}>
-              {fromAgentBox.map((c) => (
-                <ConnectorRow key={c.name} connector={c} control={<OverrideControl project={target} connector={c} />} />
-              ))}
-            </ul>
-          </Card>
-        )}
-
-        {inherited.length > 0 && (
-          <Card
-            title={t('project.connectors.fromProject', { count: inherited.length })}
-            icon={Lock}
-            description={t('project.connectors.fromProjectDescription')}
-          >
-            <ul className="grid gap-2" aria-label={t('project.connectors.projectAria')}>
-              {inherited.map((c) => (
-                <ConnectorRow key={c.name} connector={c} />
-              ))}
-            </ul>
-          </Card>
-        )}
-
         <Card
           title={
             wide
@@ -116,28 +89,59 @@ export function ConnectorsTab({ target, embedded }: { target: string; embedded?:
                 : t('project.connectors.projectOwnDescription')
           }
         >
-          {connectors.error && <Notice>{errorMessage(connectors.error)}</Notice>}
-          {connectors.isPending && <p className="py-3 text-sm text-subtle">{t('common.loading')}</p>}
-          {!connectors.isPending && mine.length === 0 && (
-            <p className="py-3 text-[13px] leading-relaxed text-subtle">
-              {t.rich('project.connectors.none', { code: (c) => <Code>{c}</Code> })}
-            </p>
+          {connect.error && <Notice className="mb-3">{connect.error}</Notice>}
+          {connectors.error ? (
+            <LoadFailed message={errorMessage(connectors.error)} />
+          ) : connectors.isPending ? (
+            <ConnectorSkeletons />
+          ) : mine.length === 0 ? (
+            <NoConnectors />
+          ) : (
+            <ConnectorList label={t('project.connectors.listAria')}>
+              {mine.map((c) => (
+                <ConnectorRow
+                  key={c.name}
+                  connector={c}
+                  target={target}
+                  connecting={connect.starting === c.name}
+                  onConnect={() => connect.start(c.name)}
+                  onReopen={connect.reopen(c.name)}
+                  onRemove={() => setRemoving(c)}
+                />
+              ))}
+            </ConnectorList>
           )}
-          {connect.error && <Notice>{connect.error}</Notice>}
-          <ul className="grid gap-2" aria-label={t('project.connectors.listAria')}>
-            {mine.map((c) => (
-              <ConnectorRow
-                key={c.name}
-                connector={c}
-                target={target}
-                connecting={connect.starting === c.name}
-                onConnect={() => connect.start(c.name)}
-                onReopen={connect.reopen(c.name)}
-                onRemove={() => setRemoving(c)}
-              />
-            ))}
-          </ul>
         </Card>
+
+        {fromAgentBox.length > 0 && (
+          <Card
+            title={t('project.connectors.fromAgentBox', { count: fromAgentBox.length })}
+            icon={Globe}
+            description={t('project.connectors.fromAgentBoxDescription')}
+          >
+            <ConnectorList label={t('project.connectors.agentBoxAria')}>
+              {fromAgentBox.map((c) => (
+                <ConnectorRow key={c.name} connector={c} control={<OverrideControl project={target} connector={c} />} />
+              ))}
+            </ConnectorList>
+          </Card>
+        )}
+
+        {inherited.length > 0 && (
+          <Card
+            title={t('project.connectors.fromProject', { count: inherited.length })}
+            icon={Lock}
+            description={t('project.connectors.fromProjectDescription')}
+          >
+            <ConnectorList label={t('project.connectors.projectAria')}>
+              {inherited.map((c) => (
+                <ConnectorRow key={c.name} connector={c} />
+              ))}
+            </ConnectorList>
+          </Card>
+        )}
+
+        <Catalog target={target} scope={scope} have={connectors.data ?? []} onAdded={refresh} connect={connect.start} />
       </div>
 
       <ConfirmDialog
@@ -159,6 +163,62 @@ export function ConnectorsTab({ target, embedded }: { target: string; embedded?:
           await refresh();
         }}
       />
+    </div>
+  );
+}
+
+// NoConnectors is a target with none of its own yet: the catalog's marks,
+// and what one does, over the catalog below.
+function NoConnectors() {
+  const t = useT();
+  return (
+    <div className="grid justify-items-center gap-3 rounded-xl border border-dashed border-line-strong px-6 py-7 text-center" data-connectors-empty>
+      <div className="flex items-center gap-1.5" aria-hidden="true">
+        {connectorPresets.map((p) => (
+          <ConnectorMark key={p.id} preset={p.id} className="text-muted" />
+        ))}
+      </div>
+      <div className="grid max-w-md gap-1">
+        <p className="text-sm font-semibold text-primary">{t('project.connectors.emptyTitle')}</p>
+        <p className="text-[12.5px] leading-relaxed text-subtle">{t.rich('project.connectors.none', { code: (c) => <Code>{c}</Code> })}</p>
+      </div>
+    </div>
+  );
+}
+
+// ConnectorSkeletons stand in for the list until it arrives, in the shape
+// of its rows.
+function ConnectorSkeletons() {
+  return (
+    <div className="grid gap-2" aria-busy="true" data-connectors-loading>
+      {['w-24', 'w-32'].map((w) => (
+        <div key={w} className="flex items-center gap-3 rounded-xl border border-line-faint bg-surface-faint p-3">
+          <Skeleton className="size-9 rounded-[10px]" />
+          <div className="grid flex-1 gap-1.5">
+            <Skeleton className={cn('h-3.5', w)} />
+            <Skeleton className="h-3 w-40" />
+          </div>
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-8 w-28 rounded-lg" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// LoadFailed is the list the daemon wouldn't give: what it said, where the
+// list would be. The page refetches when connectors change.
+function LoadFailed({ message }: { message: string }) {
+  const t = useT();
+  return (
+    <div role="alert" className="flex items-start gap-3 rounded-xl border border-rose-500/25 bg-rose-500/[0.06] p-3" data-connectors-error>
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-[10px] bg-rose-500/10 text-rose-300 ring-1 ring-inset ring-rose-400/25">
+        <CircleAlert className="size-4" />
+      </span>
+      <div className="grid min-w-0 gap-0.5">
+        <p className="text-[13px] font-medium text-primary">{t('project.connectors.loadFailed')}</p>
+        <p className="break-words font-mono text-[11.5px] text-rose-300">{message}</p>
+      </div>
     </div>
   );
 }
@@ -259,7 +319,7 @@ function Catalog({
             : t('project.connectors.giveProjectDescription')
       }
     >
-      <div className="grid grid-cols-2 gap-2 py-1 sm:grid-cols-3" role="list" aria-label={t('project.connectors.catalogAria')}>
+      <div className="grid auto-rows-fr grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-2" role="list" aria-label={t('project.connectors.catalogAria')}>
         {connectorPresets.map((p) => {
           const existing = added(p);
           return (
@@ -267,10 +327,10 @@ function Catalog({
               key={p.id}
               id={p.label}
               label={p.label}
-              detail={existing ? t('project.connectors.addedAs', { name: existing.name }) : p.blurb}
+              detail={p.blurb}
+              added={existing ? t('project.connectors.addedAs', { name: existing.name }) : undefined}
               selected={picked !== 'custom' && picked?.id === p.id}
-              disabled={!!existing}
-              mark={<PresetMark preset={p} />}
+              mark={<ConnectorMark preset={p.id} />}
               onClick={() => setPicked(picked !== 'custom' && picked?.id === p.id ? null : p)}
             />
           );
@@ -280,7 +340,7 @@ function Catalog({
           label={t('project.connectors.customUrl')}
           detail={t('project.connectors.customDetail')}
           selected={picked === 'custom'}
-          mark={<Globe className="size-4" />}
+          mark={<ConnectorMark className="border border-dashed border-line-strong bg-transparent ring-0" />}
           onClick={() => setPicked(picked === 'custom' ? null : 'custom')}
         />
       </div>
@@ -303,58 +363,58 @@ function Catalog({
   );
 }
 
+// Tile is a server in the catalog: its mark, its name and one line on what
+// it does, all of a height. One this target has already is shown as added,
+// and can't be picked again.
 function Tile({
   id,
   label,
   detail,
   mark,
+  added,
   selected,
-  disabled,
   onClick,
 }: {
   id: string;
   label: string;
   detail: string;
   mark: ReactNode;
+  // added says under what name this target has it already.
+  added?: string;
   selected: boolean;
-  disabled?: boolean;
   onClick: () => void;
 }) {
+  const t = useT();
   return (
     <button
       type="button"
       role="listitem"
-      disabled={disabled}
+      disabled={!!added}
       aria-pressed={selected}
+      title={added}
       data-connector-preset={id}
       onClick={onClick}
       className={cn(
-        'flex min-w-0 flex-col items-start gap-1.5 rounded-xl border px-3 py-2.5 text-left transition',
-        selected ? 'border-brand-400/60 bg-brand-500/10' : 'border-line-faint bg-surface-faint hover:border-line-strong',
-        'disabled:cursor-default disabled:opacity-55 disabled:hover:border-line-faint',
+        'flex min-w-0 items-center gap-3 rounded-xl border p-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400',
+        selected ? 'border-brand-400/60 bg-brand-500/10 [&>span:first-child]:text-brand-300' : 'border-line-faint bg-surface-faint hover:border-line-strong hover:bg-surface',
+        'disabled:cursor-default disabled:hover:border-line-faint disabled:hover:bg-surface-faint',
       )}
     >
-      <span className="flex items-center gap-2 text-[13px] font-medium text-primary">
-        <span className="flex size-6 items-center justify-center rounded-md bg-surface text-secondary ring-1 ring-inset ring-line">{mark}</span>
-        {label}
+      {mark}
+      <span className="grid min-w-0 flex-1 gap-0.5">
+        <span className="flex min-w-0 items-center gap-2">
+          <span className={cn('truncate text-[13px] font-medium', added ? 'text-tertiary' : 'text-primary')}>{label}</span>
+          {added && (
+            <span className="ml-auto inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-emerald-300" data-connector-added>
+              <Check className="size-3.5" />
+              {t('project.connectors.addedBadge')}
+            </span>
+          )}
+        </span>
+        <span className="truncate text-[11.5px] text-subtle">{detail}</span>
       </span>
-      <span className="line-clamp-2 w-full text-[11px] leading-snug text-subtle">{detail}</span>
     </button>
   );
-}
-
-// PresetMark is a letter, not the company's logo: the app ships no one else's
-// artwork. Hatch is the exception, being ours: an egg with a crack through it.
-function PresetMark({ preset }: { preset: ConnectorPreset }) {
-  if (preset.id === 'hatch') {
-    return (
-      <svg viewBox="0 0 16 16" className="size-4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M8 1.8c2.6 0 4.6 3.4 4.6 6.4a4.6 4.6 0 0 1-9.2 0C3.4 5.2 5.4 1.8 8 1.8Z" />
-        <path d="m4 8.4 1.8 1.4L8 7.8l2.2 2L12 8.4" />
-      </svg>
-    );
-  }
-  return <span className="text-[11px] font-semibold">{preset.label[0]}</span>;
 }
 
 type AuthChoice = typeof A.ConnectorOAuth | typeof A.ConnectorSecret | typeof A.ConnectorNone;
@@ -416,7 +476,7 @@ function ConnectorForm({
 
   return (
     <form
-      className="mt-3 grid gap-4 border-t border-line-faint pt-4"
+      className="mt-3 grid gap-4 rounded-xl border border-line-faint bg-surface-faint p-4"
       data-connector-form={preset?.id ?? 'custom'}
       onSubmit={(event) => {
         event.preventDefault();
@@ -579,7 +639,6 @@ function ConnectorRow({
   const t = useT();
   const queryClient = useQueryClient();
   const now = useNow(30_000);
-  const status = connectorStatus(c);
   const token = tokenLine(c, now);
   const change = useMutation({
     mutationFn: (fn: () => Promise<T.Connector>) => fn(),
@@ -590,79 +649,164 @@ function ConnectorRow({
   const oauth = c.auth === A.ConnectorOAuth;
   const waiting = c.status === A.ConnectorConnecting;
 
+  const meta = [
+    token && <span key="token" data-connector-token>{token}</span>,
+    c.issuer && <span key="issuer" className="min-w-0 truncate">{t('project.connectors.signedInWith', { host: hostOf(c.issuer) })}</span>,
+    c.connectedAt && c.status === A.ConnectorConnected && <span key="since" title={formatDateTime(c.connectedAt)}>{t('project.connectors.since', { when: timeAgo(c.connectedAt, now) })}</span>,
+    c.auth === A.ConnectorNone && <span key="public">{t('project.connectors.publicServer')}</span>,
+    <span key="where">{whereItIs(c)}</span>,
+    c.overrides && Object.keys(c.overrides).length > 0 && (
+      <Tip key="overrides" label={Object.entries(c.overrides).map(([p, on]) => `${p}: ${on ? t('skills.on') : t('skills.off')}`).join(' · ')}>
+        <span>{t('project.connectors.overridden', { count: Object.keys(c.overrides).length })}</span>
+      </Tip>
+    ),
+  ].filter(Boolean);
+
+  // On a wide list, a row of ConnectorList's columns: the mark, the name and
+  // host, the state, what can be done. On a narrow one, the state and the
+  // actions go under the name.
   return (
     <li
       data-connector={c.name}
       data-connector-status={c.status}
-      className="grid gap-1.5 rounded-xl border border-line-faint bg-surface-faint px-3 py-2.5 transition hover:border-line-strong"
+      className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-2 rounded-xl border border-line-faint bg-surface-faint p-3 transition hover:border-line-strong @xl:col-span-full @xl:grid-cols-subgrid"
     >
-      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-        <span className="font-mono text-[13px] text-primary">{c.name}</span>
-        <Badge variant={status.tone}>
-          {waiting && <LoaderCircle className="animate-spin" />}
-          {status.label}
-        </Badge>
-        {!c.enabled && <Badge>{t('project.connectors.off')}</Badge>}
-        {isWide(c) && target === undefined && !control && <Badge variant="brand">{t('project.connectors.wideBadge')}</Badge>}
-        <span className="min-w-0 truncate font-mono text-[11.5px] text-subtle" title={c.url}>
-          {c.url}
+      <ConnectorMark url={c.url} className="row-span-2 self-start @xl:row-span-1 @xl:self-center" />
+      <div className="grid min-w-0 gap-0.5">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="truncate font-mono text-[13px] font-medium text-primary" title={c.name}>{c.name}</span>
+          <ScopeBadge connector={c} />
+        </div>
+        <span className="truncate font-mono text-[11.5px] text-subtle" title={c.url} data-connector-host>
+          {hostOf(c.url)}
         </span>
-        {control && <div className="ml-auto flex shrink-0 items-center">{control}</div>}
-        {target !== undefined && (
-          <div className="ml-auto flex shrink-0 items-center gap-1">
-            <Tip label={c.enabled ? t('project.connectors.given') : t('project.connectors.leftOut')}>
-              <span className="flex items-center">
-                <Switch
-                  aria-label={t('project.connectors.giveSwitch', { name: c.name })}
-                  checked={c.enabled}
-                  disabled={change.isPending}
-                  onCheckedChange={(enabled) => change.mutate(() => api.setConnector(target, c.name, sameConnector(c, enabled)))}
-                />
-              </span>
-            </Tip>
-            {oauth && waiting && onReopen && (
-              <Button size="sm" variant="ghost" onClick={onReopen}>
-                <ExternalLink />
-                {t('project.connectors.reopen')}
-              </Button>
-            )}
-            {oauth && !waiting && c.status !== A.ConnectorConnected && (
-              <Button size="sm" variant="primary" disabled={connecting} onClick={onConnect}>
-                {connecting ? <LoaderCircle className="animate-spin" /> : <Plug />}
-                {c.status === A.ConnectorError ? t('project.connectors.connectAgain') : t('project.connectors.connect')}
-              </Button>
-            )}
-            {oauth && (c.status === A.ConnectorConnected || waiting) && (
-              <Button size="sm" variant="ghost" disabled={change.isPending} onClick={() => change.mutate(() => api.disconnectConnector(target, c.name))}>
-                <Unplug />
-                {waiting ? t('common.cancel') : t('project.connectors.disconnect')}
-              </Button>
-            )}
-            {onRemove && (
-              <Tip label={t('common.remove')}>
-                <Button variant="ghost" size="icon-sm" aria-label={t('project.connectors.removeAria', { name: c.name })} onClick={onRemove}>
-                  <X />
-                </Button>
+      </div>
+      <div className="col-start-2 flex min-w-0 flex-wrap items-center justify-between gap-2 @xl:contents">
+        <div className="flex min-w-0 flex-wrap items-center gap-2 @xl:col-start-3">
+          <StatusDot connector={c} />
+          {!c.enabled && <Badge>{t('project.connectors.off')}</Badge>}
+        </div>
+        <div className="flex min-w-0 flex-wrap items-center gap-1 @xl:col-start-4 @xl:justify-end">
+          {control}
+          {target !== undefined && (
+            <>
+              <Tip label={c.enabled ? t('project.connectors.given') : t('project.connectors.leftOut')}>
+                <span className="mr-1 flex items-center">
+                  <Switch
+                    aria-label={t('project.connectors.giveSwitch', { name: c.name })}
+                    checked={c.enabled}
+                    disabled={change.isPending}
+                    onCheckedChange={(enabled) => change.mutate(() => api.setConnector(target, c.name, sameConnector(c, enabled)))}
+                  />
+                </span>
               </Tip>
-            )}
-          </div>
-        )}
+              {oauth && waiting && onReopen && (
+                <Button size="sm" variant="ghost" onClick={onReopen}>
+                  <ExternalLink />
+                  {t('project.connectors.reopen')}
+                </Button>
+              )}
+              {oauth && !waiting && c.status !== A.ConnectorConnected && (
+                <Button size="sm" variant="primary" disabled={connecting} onClick={onConnect}>
+                  {connecting ? <LoaderCircle className="animate-spin" /> : c.status === A.ConnectorError ? <RotateCw /> : <Plug />}
+                  {c.status === A.ConnectorError ? t('project.connectors.connectAgain') : t('project.connectors.connect')}
+                </Button>
+              )}
+              {oauth && (c.status === A.ConnectorConnected || waiting) && (
+                <Button size="sm" variant="ghost" disabled={change.isPending} onClick={() => change.mutate(() => api.disconnectConnector(target, c.name))}>
+                  <Unplug />
+                  {waiting ? t('common.cancel') : t('project.connectors.disconnect')}
+                </Button>
+              )}
+              {onRemove && (
+                <Tip label={t('common.remove')}>
+                  <Button variant="ghost" size="icon-sm" className="text-subtle hover:text-rose-300 [&_svg]:size-4" aria-label={t('project.connectors.removeAria', { name: c.name })} onClick={onRemove}>
+                    <Trash2 />
+                  </Button>
+                </Tip>
+              )}
+            </>
+          )}
+        </div>
       </div>
-      <div className="flex min-w-0 flex-wrap items-center gap-x-2 text-[11.5px] text-subtle">
-        {token && <span data-connector-token>{token}</span>}
-        {c.issuer && <span className="min-w-0 truncate">{t('project.connectors.signedInWith', { host: hostOf(c.issuer) })}</span>}
-        {c.connectedAt && c.status === A.ConnectorConnected && <span title={formatDateTime(c.connectedAt)}>{t('project.connectors.since', { when: timeAgo(c.connectedAt, now) })}</span>}
-        {c.auth === A.ConnectorNone && <span>{t('project.connectors.publicServer')}</span>}
-        <span>{whereItIs(c)}</span>
-        {c.overrides && Object.keys(c.overrides).length > 0 && (
-          <Tip label={Object.entries(c.overrides).map(([p, on]) => `${p}: ${on ? t('skills.on') : t('skills.off')}`).join(' · ')}>
-            <span>{t('project.connectors.overridden', { count: Object.keys(c.overrides).length })}</span>
-          </Tip>
-        )}
-      </div>
-      {c.status === A.ConnectorError && c.error && <p className="break-words text-[11.5px] text-rose-300">{c.error}</p>}
-      {change.error && <p className="break-words text-[11.5px] text-rose-300">{errorMessage(change.error)}</p>}
+      {meta.length > 0 && (
+        <div className="col-start-2 col-end-[-1] flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11.5px] text-subtle">
+          {meta.map((m, i) => (
+            <Fragment key={(m as ReactElement).key}>
+              {i > 0 && <span className="text-faint" aria-hidden="true">·</span>}
+              {m}
+            </Fragment>
+          ))}
+        </div>
+      )}
+      {c.status === A.ConnectorError && c.error && <RowError>{c.error}</RowError>}
+      {change.error && <RowError>{errorMessage(change.error)}</RowError>}
     </li>
+  );
+}
+
+function RowError({ children }: { children: ReactNode }) {
+  return (
+    <p className="col-start-2 col-end-[-1] flex min-w-0 items-start gap-1.5 rounded-lg border border-rose-500/20 bg-rose-500/[0.06] px-2.5 py-1.5 text-[11.5px] leading-relaxed text-rose-300">
+      <CircleAlert className="mt-px size-3.5 shrink-0" />
+      <span className="min-w-0 break-words">{children}</span>
+    </p>
+  );
+}
+
+// ConnectorList is a card's connectors, whose rows share their columns when
+// there is room for them.
+function ConnectorList({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="@container">
+      <ul className="grid gap-2 @xl:grid-cols-[auto_minmax(0,1fr)_auto_auto] @xl:gap-x-4" aria-label={label}>
+        {children}
+      </ul>
+    </div>
+  );
+}
+
+const statusDots: Record<StatusTone, string> = {
+  success: 'bg-emerald-400 text-emerald-300',
+  warning: 'bg-amber-400 text-amber-300',
+  danger: 'bg-rose-400 text-rose-300',
+  default: 'bg-faint text-subtle',
+};
+
+// StatusDot is where a connector stands, as a dot and a word: green when the
+// agents can use it, amber while the browser sign-in is open, red when it
+// needs signing in again.
+function StatusDot({ connector: c }: { connector: T.Connector }) {
+  const status = connectorStatus(c);
+  const [dot, text] = statusDots[status.tone].split(' ');
+  return (
+    <span className={cn('inline-flex items-center gap-1.5 whitespace-nowrap text-[12px] font-medium', text)} data-connector-state={status.tone}>
+      <span className="relative flex size-2 shrink-0">
+        {c.status === A.ConnectorConnecting && <span className={cn('absolute inset-0 animate-ping rounded-full opacity-60', dot)} />}
+        <span className={cn('relative size-2 rounded-full', dot)} />
+      </span>
+      {status.label}
+    </span>
+  );
+}
+
+// ScopeBadge says whose the connector is: AgentBox's, for every project; a
+// project's, for its agents; or one agent's own.
+function ScopeBadge({ connector: c }: { connector: T.Connector }) {
+  const t = useT();
+  if (isWide(c)) {
+    return (
+      <Badge variant="brand" className="shrink-0">
+        <Globe />
+        {t('project.connectors.wideBadge')}
+      </Badge>
+    );
+  }
+  return (
+    <Badge className="shrink-0">
+      {c.scope === 'agent' ? <Bot /> : <FolderGit2 />}
+      {c.scope === 'agent' ? t('project.connectors.scope.agent') : t('project.connectors.scope.project')}
+    </Badge>
   );
 }
 
