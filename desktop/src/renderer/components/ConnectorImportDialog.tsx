@@ -8,6 +8,7 @@ import { api } from '../lib/api';
 import { useT } from '../lib/i18n';
 import { projectLabel } from '../lib/projectName';
 import { cn, errorMessage } from '../lib/utils';
+import { ConnectorMark } from './ConnectorMark';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Notice } from './ui/card';
@@ -223,6 +224,7 @@ function CandidateRow({
         </button>
         <div className="grid min-w-0 flex-1 gap-1">
           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <ConnectorMark url={c.url} size="sm" />
             <span className="font-mono text-[13px] font-medium text-title">{c.name}</span>
             {tools.map((tool) => (
               <Badge key={tool}>{tool}</Badge>

@@ -18,6 +18,7 @@ import {
   overrideOf,
   overrideRequest,
   presetFor,
+  presetForURL,
   RequestConnector,
   secretNameFor,
   tokenLine,
@@ -69,6 +70,13 @@ test('presetFor finds a preset by name or by URL, with or without a trailing sla
   assert.equal(presetFor('notion')?.label, 'Notion');
   assert.equal(presetFor('https://mcp.linear.app/mcp/')?.label, 'Linear');
   assert.equal(presetFor('acme'), undefined);
+});
+
+test('presetForURL finds a preset by its server alone, so a mark is never borrowed by name', () => {
+  assert.equal(presetForURL('https://mcp.sentry.dev/mcp/')?.id, 'sentry');
+  assert.equal(presetForURL('https://usehatch.dev/mcp')?.id, 'hatch');
+  assert.equal(presetForURL('https://notion.example.com/mcp'), undefined);
+  assert.equal(presetForURL('notion'), undefined);
 });
 
 test('connectorName makes a name from the server host', () => {
