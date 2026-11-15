@@ -81,6 +81,8 @@
 //   ?chat=limited           a running agent's chat stopped on its Claude Code
 //                           account's usage limit, with another account that
 //                           has room; "Continue on work" moves it there
+//   ?app=agent-99&changes=1 the Changes view on agent-99's branch over the App
+//                           (fixtures.ts devChanges); changes=<path> opens on that file
 //   ?app=agent-15&review=1&sleep=stopped  a finished agent awaiting review whose machine sleeps: one bar
 //   ?chat=thinking          a Claude Code turn thinking: &phase=live the thought
 //                           still arriving, =answer the reply after it, =done
@@ -359,6 +361,7 @@ import { Timeline } from '../components/chat/Timeline';
 import { HomeChatPanel } from '../components/HomeChatPanel';
 import { leadAgentFrom } from '../components/ProjectChatPanel';
 import { api } from '../lib/api';
+import { openChanges } from '../lib/changes';
 import { Markdown } from '../components/chat/Markdown';
 import { webStreams } from '../web/streams';
 import { chooseSession } from '../lib/sessions';
@@ -1719,6 +1722,10 @@ if (phoneMode === 'frame') {
   );
 } else if (appView) {
   const { App } = await import('../App');
+  // ?changes=1: the Changes view over the App, on agent-99's branch
+  // (fixtures.ts devChanges); =<path> opens on that file.
+  const changesAt = params.get('changes');
+  if (changesAt) openChanges(`${PROJECT}/agent-99`, changesAt === '1' ? undefined : changesAt);
   // Last, over the chat any scenario above seeded.
   if (params.get('thread') === 'rich') queryClient.setQueryData(['chat', `${PROJECT}/lead`], richChat());
   // ?sessionStatus=live: the dev bridge's status events reach the app.

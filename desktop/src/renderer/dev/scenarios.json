@@ -3079,5 +3079,19 @@
     "height": 900,
     "wait": 1500,
     "hover": "[data-busy=\"host\"]"
+  },
+  {
+    "id": "changes-view-dark",
+    "description": "The Changes view over the App on agent-99's branch: a tree with a renamed, a deleted, an untracked file and a long path, beside a diff with a folded stretch — dark",
+    "query": "app=agent-99&changes=internal/daemon/session.go&theme=dark",
+    "width": 1600,
+    "height": 1000
+  },
+  {
+    "id": "changes-view-narrow-light",
+    "description": "The same at 480px, where the view fills the window — light",
+    "query": "app=agent-99&changes=internal/daemon/session.go&theme=light",
+    "width": 480,
+    "height": 900
   }
 ]

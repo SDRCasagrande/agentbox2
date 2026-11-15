@@ -2425,11 +2425,38 @@ const devTree: Record<string, [string, boolean][]> = {
   desktop: [['src', true], ['package.json', false]],
   internal: [['daemon', true], ['chat', true]],
 };
+// devChanges is the Changes view's branch (components/changes, ?changes=1): a
+// file changed in two places far apart, so one stretch folds away between
+// them, one added, one renamed with an edit, one deleted, and one with a path
+// long enough to need the tree's truncation.
+const devGoBefore = Array.from({ length: 60 }, (_, i) => `\t// line ${i + 1} of the session store`).join('\n');
+const devChanges: { change: T.WorktreeChange; old?: string; new?: string }[] = [
+  {
+    change: { path: 'internal/daemon/session.go', status: 'modified', additions: 4, deletions: 2 },
+    old: `package daemon\n\nimport "time"\n\n// idleAfter is how long a session waits.\nconst idleAfter = 5 * time.Minute\n\nfunc (s *Server) sessions() {\n${devGoBefore}\n\treturn\n}\n`,
+    new: `package daemon\n\nimport (\n\t"context"\n\t"time"\n)\n\n// idleAfter is how long a session waits before it sleeps.\nconst idleAfter = 10 * time.Minute\n\nfunc (s *Server) sessions(ctx context.Context) {\n${devGoBefore}\n\t<-ctx.Done()\n}\n`,
+  },
+  {
+    change: { path: 'internal/daemon/session_test.go', status: 'added', additions: 12, deletions: 0 },
+    new: 'package daemon\n\nimport (\n\t"testing"\n\t"time"\n)\n\nfunc TestIdleAfter(t *testing.T) {\n\tif idleAfter < time.Minute {\n\t\tt.Fatal("too short")\n\t}\n}\n',
+  },
+  {
+    change: { path: 'desktop/src/renderer/lib/sessionClock.ts', previousPath: 'desktop/src/renderer/lib/clock.ts', status: 'renamed', additions: 1, deletions: 1 },
+    old: "export const tick = 1000;\nexport function now(): number {\n  return Date.now();\n}\n",
+    new: "export const tick = 500;\nexport function now(): number {\n  return Date.now();\n}\n",
+  },
+  { change: { path: 'docs/old-sessions.md', status: 'deleted', additions: 0, deletions: 3 }, old: '# Sessions\n\nThey never slept.\n' },
+  {
+    change: { path: 'desktop/src/renderer/components/a-folder-with-a-rather-long-name/AndAComponentWhoseNameKeepsGoing.tsx', status: 'untracked', additions: 1, deletions: 0 },
+    new: 'export const Long = () => null;\n',
+  },
+];
+
 function filesRequest(method: string, path: string) {
   if (method !== 'GET') return undefined;
   const json = (body: unknown) => ({ status: 200, body: JSON.stringify(body), contentType: 'application/json' });
   const url = new URL(path, 'http://dev');
-  const at = url.pathname.match(/\/files(\/list|\/status|\/read)?$/);
+  const at = url.pathname.match(/\/files(\/list|\/status|\/read|\/changes|\/sides)?$/);
   // A pull request's files are its own (dev/review.tsx).
   if (!at || url.pathname.includes('/pulls/')) return undefined;
   const dir = url.searchParams.get('path') ?? '';
@@ -2439,6 +2466,19 @@ function filesRequest(method: string, path: string) {
   }
   if (at[1] === '/status') return json({ base: 'main', changes: { 'desktop/package.json': 'M' }, truncated: false } satisfies T.FileStatus);
   if (at[1] === '/read') return json({ path: dir, text: '# AgentBox\n', size: 11 });
+  if (at[1] === '/changes') return json({ base: 'main', files: devChanges.map((c) => c.change), truncated: false } satisfies T.WorktreeChanges);
+  if (at[1] === '/sides') {
+    const c = devChanges.find((d) => d.change.path === dir);
+    if (!c) return { status: 404, body: JSON.stringify({ error: `${dir} didn't change` }), contentType: 'application/json' };
+    return json({
+      path: dir,
+      previousPath: c.change.previousPath,
+      oldText: c.old ?? '',
+      newText: c.new ?? '',
+      oldMissing: c.old === undefined || undefined,
+      newMissing: c.new === undefined || undefined,
+    } satisfies T.FileSides);
+  }
   return json({ files: ['AGENTS.md', 'README.md', 'go.mod', 'desktop/package.json'], truncated: false } satisfies T.WorktreeFiles);
 }
 

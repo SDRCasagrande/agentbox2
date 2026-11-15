@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient, type InfiniteData, type QueryClient } from '@tanstack/react-query';
 import { PrNumberLink } from './PrNumberLink';
-import { Check, ChevronDown, ChevronLeft, ChevronRight, CircleCheck, CircleDashed, CircleDot, CircleX, Clock, ExternalLink, FileDiff, GitBranch, GitMerge, GitPullRequest, Images, Info, Keyboard, LoaderCircle, MessageSquare, MessageSquareText, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronLeft, ChevronRight, CircleCheck, CircleDashed, CircleDot, CircleX, Clock, ExternalLink, FileDiff, GitBranch, GitCompare, GitMerge, GitPullRequest, Images, Info, Keyboard, LoaderCircle, MessageSquare, MessageSquareText, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import type * as T from '../../shared/api';
 import { api } from '../lib/api';
+import { openChanges } from '../lib/changes';
 import { useT, type MessageKey } from '../lib/i18n';
 import { pagesFor } from '../lib/pages';
 import { projectLabel } from '../lib/projectName';
@@ -932,7 +933,8 @@ function ReportStrip({ report, inert, className }: { report: T.AgentReport; iner
 // AgentDiff is the agent's whole diff, for an agent that opened no pull
 // request: file by file, as the pull request's are, notes and all. A past
 // agent's is its kept branch's. A session's header shows its agents' together
-// (chat/SessionHeader.tsx).
+// (chat/SessionHeader.tsx). A live agent's opens in the Changes view too
+// (components/changes): its uncommitted work, a file at a time, as it goes.
 export function AgentDiff({ agent, past }: { agent: string; past?: boolean }) {
   const t = useT();
   const diff = useQuery({ queryKey: ['diff', agent, !!past], queryFn: () => (past ? api.archivedDiff(agent) : api.diff(agent)) });
@@ -940,6 +942,14 @@ export function AgentDiff({ agent, past }: { agent: string; past?: boolean }) {
   if (!diff.data) return <div className="p-6 text-ui text-subtle">{t('common.loading')}</div>;
   return (
     <div className="grid min-w-0 flex-1 content-start gap-3 bg-sunken p-4" data-review-diff>
+      {!past && (
+        <div className="flex justify-end">
+          <Button size="sm" variant="secondary" className="h-7" onClick={() => openChanges(agent)} title={t('changes.openTip')} data-review-open-changes>
+            <GitCompare />
+            {t('changes.open')}
+          </Button>
+        </div>
+      )}
       {splitGitDiff(diff.data).map((f) => (
         <AgentFileDiff key={f.path} path={f.path} patch={f.patch} />
       ))}
