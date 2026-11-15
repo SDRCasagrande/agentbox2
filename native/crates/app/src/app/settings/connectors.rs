@@ -1011,7 +1011,7 @@ impl AppView {
                     div()
                         .text_size(theme::text::CAPTION)
                         .text_color(theme::subtle())
-                        .child(facts.join(" ")),
+                        .child(facts.join(" · ")),
                 )
             })
             .when(removing, |el| {
