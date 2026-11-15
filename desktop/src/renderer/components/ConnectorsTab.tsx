@@ -180,7 +180,7 @@ function NoConnectors() {
       </div>
       <div className="grid max-w-md gap-1">
         <p className="text-sm font-semibold text-primary">{t('project.connectors.emptyTitle')}</p>
-        <p className="text-[12.5px] leading-relaxed text-subtle">{t.rich('project.connectors.none', { code: (c) => <Code>{c}</Code> })}</p>
+        <p className="text-ui leading-relaxed text-subtle">{t.rich('project.connectors.none', { code: (c) => <Code>{c}</Code> })}</p>
       </div>
     </div>
   );
@@ -216,8 +216,8 @@ function LoadFailed({ message }: { message: string }) {
         <CircleAlert className="size-4" />
       </span>
       <div className="grid min-w-0 gap-0.5">
-        <p className="text-[13px] font-medium text-primary">{t('project.connectors.loadFailed')}</p>
-        <p className="break-words font-mono text-[11.5px] text-rose-300">{message}</p>
+        <p className="text-ui font-medium text-primary">{t('project.connectors.loadFailed')}</p>
+        <p className="break-words font-mono text-caption text-rose-300">{message}</p>
       </div>
     </div>
   );
@@ -403,15 +403,15 @@ function Tile({
       {mark}
       <span className="grid min-w-0 flex-1 gap-0.5">
         <span className="flex min-w-0 items-center gap-2">
-          <span className={cn('truncate text-[13px] font-medium', added ? 'text-tertiary' : 'text-primary')}>{label}</span>
+          <span className={cn('truncate text-ui font-medium', added ? 'text-tertiary' : 'text-primary')}>{label}</span>
           {added && (
-            <span className="ml-auto inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-emerald-300" data-connector-added>
+            <span className="ml-auto inline-flex shrink-0 items-center gap-1 text-caption font-medium text-emerald-300" data-connector-added>
               <Check className="size-3.5" />
               {t('project.connectors.addedBadge')}
             </span>
           )}
         </span>
-        <span className="truncate text-[11.5px] text-subtle">{detail}</span>
+        <span className="truncate text-caption text-subtle">{detail}</span>
       </span>
     </button>
   );
@@ -492,7 +492,7 @@ function ConnectorForm({
         >
           <Input
             id="connector-name"
-            className="font-mono text-[13px]"
+            className="font-mono text-ui"
             placeholder="acme"
             autoComplete="off"
             spellCheck={false}
@@ -507,7 +507,7 @@ function ConnectorForm({
         <Field label={t('project.connectors.urlLabel')} htmlFor="connector-url" hint={problemHint(problems.url, t('project.connectors.urlHint'))}>
           <Input
             id="connector-url"
-            className="font-mono text-[13px]"
+            className="font-mono text-ui"
             placeholder="https://mcp.example.com/mcp"
             autoComplete="off"
             spellCheck={false}
@@ -544,7 +544,7 @@ function ConnectorForm({
             <Input
               id="connector-token"
               type="password"
-              className="font-mono text-[13px]"
+              className="font-mono text-ui"
               placeholder={t('project.connectors.tokenPlaceholder')}
               autoComplete="off"
               spellCheck={false}
@@ -555,7 +555,7 @@ function ConnectorForm({
           <Field label={t('project.connectors.secretLabel')} htmlFor="connector-secret" hint={problemHint(problems.secret)}>
             <Input
               id="connector-secret"
-              className="font-mono text-[13px]"
+              className="font-mono text-ui"
               placeholder="ACME_TOKEN"
               autoComplete="off"
               spellCheck={false}
@@ -570,7 +570,7 @@ function ConnectorForm({
           <Field label={t('project.connectors.headerLabel')} htmlFor="connector-header" hint={problemHint(problems.header, header.trim().toLowerCase() === 'authorization' ? t('project.connectors.headerHint') : undefined)}>
             <Input
               id="connector-header"
-              className="font-mono text-[13px]"
+              className="font-mono text-ui"
               autoComplete="off"
               spellCheck={false}
               aria-invalid={isWrong(problems.header)}
@@ -674,10 +674,10 @@ function ConnectorRow({
       <ConnectorMark url={c.url} className="row-span-2 self-start @xl:row-span-1 @xl:self-center" />
       <div className="grid min-w-0 gap-0.5">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="truncate font-mono text-[13px] font-medium text-primary" title={c.name}>{c.name}</span>
+          <span className="truncate font-mono text-ui font-medium text-primary" title={c.name}>{c.name}</span>
           <ScopeBadge connector={c} />
         </div>
-        <span className="truncate font-mono text-[11.5px] text-subtle" title={c.url} data-connector-host>
+        <span className="truncate font-mono text-caption text-subtle" title={c.url} data-connector-host>
           {hostOf(c.url)}
         </span>
       </div>
@@ -730,7 +730,7 @@ function ConnectorRow({
         </div>
       </div>
       {meta.length > 0 && (
-        <div className="col-start-2 col-end-[-1] flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11.5px] text-subtle">
+        <div className="col-start-2 col-end-[-1] flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-caption text-subtle">
           {meta.map((m, i) => (
             <Fragment key={(m as ReactElement).key}>
               {i > 0 && <span className="text-faint" aria-hidden="true">·</span>}
@@ -747,7 +747,7 @@ function ConnectorRow({
 
 function RowError({ children }: { children: ReactNode }) {
   return (
-    <p className="col-start-2 col-end-[-1] flex min-w-0 items-start gap-1.5 rounded-lg border border-rose-500/20 bg-rose-500/[0.06] px-2.5 py-1.5 text-[11.5px] leading-relaxed text-rose-300">
+    <p className="col-start-2 col-end-[-1] flex min-w-0 items-start gap-1.5 rounded-lg border border-rose-500/20 bg-rose-500/[0.06] px-2.5 py-1.5 text-caption leading-relaxed text-rose-300">
       <CircleAlert className="mt-px size-3.5 shrink-0" />
       <span className="min-w-0 break-words">{children}</span>
     </p>
@@ -780,7 +780,7 @@ function StatusDot({ connector: c }: { connector: T.Connector }) {
   const status = connectorStatus(c);
   const [dot, text] = statusDots[status.tone].split(' ');
   return (
-    <span className={cn('inline-flex items-center gap-1.5 whitespace-nowrap text-[12px] font-medium', text)} data-connector-state={status.tone}>
+    <span className={cn('inline-flex items-center gap-1.5 whitespace-nowrap text-caption font-medium', text)} data-connector-state={status.tone}>
       <span className="relative flex size-2 shrink-0">
         {c.status === A.ConnectorConnecting && <span className={cn('absolute inset-0 animate-ping rounded-full opacity-60', dot)} />}
         <span className={cn('relative size-2 rounded-full', dot)} />
@@ -845,7 +845,7 @@ function OverrideControl({ project, connector: c }: { project: string; connector
           disabled={set.isPending}
           onClick={() => current !== value && set.mutate(value)}
           className={cn(
-            'rounded-md px-2.5 py-1 text-[11.5px] font-medium transition',
+            'rounded-md px-2.5 py-1 text-caption font-medium transition',
             current === value ? 'bg-brand-500/15 text-primary ring-1 ring-inset ring-brand-400/50' : 'text-subtle hover:text-primary',
           )}
         >
